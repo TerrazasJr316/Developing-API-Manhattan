@@ -1,0 +1,5 @@
+Flask==2.3.3
+osmnx==1.9.1
+networkx==3.3
+geopandas
+shapely
