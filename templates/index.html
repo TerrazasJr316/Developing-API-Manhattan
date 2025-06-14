@@ -1,18 +1,518 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Ruta con Manhattan y Dijkstra</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8" />
+  <title>Simulación de Ruta Inteligente</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    :root {
+      --primary: #6C5CE7;
+      --primary-dark: #5649BE;  
+      --secondary: #00CEFF;
+      --dark: #2D3436;
+      --light: #F5F6FA;
+      --gray: #636E72;
+      --success: #00B894;
+      --warning: #FDCB6E;
+      --danger: #D63031;
+      --glass: rgba(255, 255, 255, 0.85);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--dark);
+      background: #f0f2f5;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    /* Panel flotante a la derecha */
+    #panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 360px;
+      max-height: calc(100vh - 40px);
+      background: var(--glass);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow-y: auto;
+      z-index: 1000;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(12px);
+      transform: translateX(0);
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    /* Botón para mostrar/ocultar panel */
+    .panel-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 48px;
+      height: 48px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      z-index: 1001;
+      border: none;
+      color: white;
+      font-size: 22px;
+      transition: all 0.3s ease;
+    }
+
+    .panel-toggle:hover {
+      background: var(--primary-dark);
+      transform: scale(1.05);
+    }
+
+    /* Estado oculto del panel */
+    #panel.hidden {
+      transform: translateX(380px);
+      box-shadow: none;
+    }
+
+    /* Contenido del panel */
+    .panel-content {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #info {
+      background: rgba(108, 92, 231, 0.1);
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--primary-dark);
+      border-left: 4px solid var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.03);
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: "";
+      display: block;
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* ESTILOS MEJORADOS PARA CAMPOS DE COORDENADAS */
+    .coord-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 80%;
+    }
+
+    .coord-row {
+      display: flex;
+      gap: 15px;
+      width: 127%;
+    }
+
+    .coord-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      display: flexk;
+    }
+
+    .coord-input-container {
+      display: flex;
+      flex: 1;
+      position: relative;
+    }
+
+    .coord-input-container::before {
+      content: attr(data-label);
+      position: absolute;
+      top: -16px;
+      left: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary);
+      background: white;
+      padding: 0 4px;
+      z-index: 1;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--light);
+      transition: all 0.3s ease;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+    }
+
+    /* Estilos específicos para inputs de coordenadas */
+    .coord-input {
+      padding: 14px 16px 12px;
+      background: white;
+      border: 1px solid rgba(108, 92, 231, 0.15);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 100;
+      color: var(--dark);
+      display: flex;
+      gap: 12px;
+      flex-direction: column
+    }
+
+    .coord-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
+      background: white;
+    }
+
+    .coord-input::placeholder {
+      color: #B2BEC3;
+      opacity: 0.6;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(108, 92, 231, 0.25);
+    }
+
+    button.primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(108, 92, 231, 0.3);
+    }
+
+    button.secondary {
+      background: white;
+      color: var(--gray);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    button.secondary:hover {
+      background: var(--light);
+      border-color: rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .transport-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .transport-btn {
+      padding: 14px;
+      font-size: 14px;
+      border-radius: 10px;
+      background: white;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .transport-btn:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .transport-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+    }
+
+    /* ESTILOS MEJORADOS PARA RESULTADOS - VERSIÓN PREMIUM */
+    #resultados-detallados {
+      background: linear-gradient(135deg, #ffffff 0%, #f9f9ff 100%);
+      border-radius: 12px;
+      padding: 0;
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+      overflow: hidden;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 20px;
+      margin: 0;
+      transition: all 0.3s ease;
+      border-bottom: 1px solid rgba(108, 92, 231, 0.05);
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .result-row:last-child {
+      border-bottom: none;
+    }
+
+    .result-row:hover {
+      background: rgba(108, 92, 231, 0.03);
+    }
+
+    .result-label {
+      color: var(--gray);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .result-label::before {
+      content: "";
+      display: block;
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+
+    .result-value {
+      font-weight: 600;
+      color: var(--dark);
+      text-align: right;
+    }
+
+    .result-value.highlight {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .result-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .result-header .result-value {
+      color: white;
+      font-weight: 700;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #panel {
+        width: 90%;
+        right: 5%;
+        top: 20px;
+        max-height: 60vh;
+      }
+      
+      #panel.hidden {
+        transform: translateX(calc(100% + 20px));
+      }
+      
+      .panel-toggle {
+        right: 5%;
+      }
+    }
+
+    /* Animaciones */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section {
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .section:nth-child(1) { animation-delay: 0.1s; }
+    .section:nth-child(2) { animation-delay: 0.2s; }
+    .section:nth-child(3) { animation-delay: 0.3s; }
+    .section:nth-child(4) { animation-delay: 0.4s; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h2>Selecciona Origen y Destino</h2>
-    <select id="method">
-        <option value="manhattan">Manhattan</option>
-        <option value="dijkstra">Dijkstra</option>
-    </select>
-    <div id="map" style="height: 600px;"></div>
-    <script src="/static/map.js"></script>
+
+  <button class="panel-toggle">☰</button>
+
+  <div id="panel">
+    <div class="panel-content">
+      <div id="info">Haz clic en el mapa o introduce las coordenadas para iniciar la simulación</div>
+
+      <div class="section">
+        <div class="section-title">Búsqueda de ubicaciones</div>
+        <div class="input-group">
+          <div class="input-row">
+            <input type="text" id="inicio-search-input" placeholder="Dirección origen">
+            <input type="text" id="destino-search-input" placeholder="Dirección destino">
+          </div>
+          <button id="buscar-btn" class="primary">🔍 Buscar</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Coordenadas manuales</div>
+        <div class="input-group">
+          <div class="coord-group">
+            <span class="coord-label">Punto de inicio</span>
+            <div class="coord-row">
+              <div class="coord-input-container" data-label="LATITUD">
+                <input type="text" id="latInicio" class="coord-input" placeholder="40.416775">
+              </div>
+              <div class="coord-input-container" data-label="LONGITUD">
+                <input type="text" id="lngInicio" class="coord-input" placeholder="-3.703790">
+              </div>
+            </div>
+          </div>
+          
+          <div class="coord-group">
+            <span class="coord-label">Punto de destino</span>
+            <div class="coord-row">
+              <div class="coord-input-container" data-label="LATITUD">
+                <input type="text" id="latDestino" class="coord-input" placeholder="41.385063">
+              </div>
+              <div class="coord-input-container" data-label="LONGITUD">
+                <input type="text" id="lngDestino" class="coord-input" placeholder="2.173404">
+              </div>
+            </div>
+          </div>
+          
+          <div class="button-group">
+            <button id="coords-btn" class="primary">📐 Calcular ruta</button>
+            <button id="reset-btn" class="secondary">🔄 Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Modo de transporte</div>
+        <div class="transport-buttons">
+          <button class="transport-btn" id="mode-walking">🚶 Caminar</button>
+          <button class="transport-btn active" id="mode-driving">🚗 Conducir</button>
+          <button class="transport-btn" id="mode-transit">🚌 Transporte</button>
+          <button class="transport-btn" id="mode-flight">✈️ Volar</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Resultados</div>
+        <div id="resultados-detallados" class="resultados">
+          Ejemplo de estructura mejorada 
+          <div class="result-header">
+            <span class="result-label">Ruta óptima</span>
+            <span class="result-value">12.5 km</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Duración</span>
+            <span class="result-value highlight">24 min</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">Combustible</span>
+            <span class="result-value">1.2 L</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">CO₂ emitido</span>
+            <span class="result-value">2.8 kg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+  
+  <script>
+    // Script solo para el toggle del panel
+    document.querySelector('.panel-toggle').addEventListener('click', function() {
+      const panel = document.getElementById('panel');
+      panel.classList.toggle('hidden');
+      this.textContent = panel.classList.contains('hidden') ? '☰' : '✕';
+    });
+  </script>
 </body>
 </html>
