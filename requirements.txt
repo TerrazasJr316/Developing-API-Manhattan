@@ -110,6 +110,7 @@ geopy==2.4.1
 gitdb @ file:///tmp/build/80754af9/gitdb_1617117951232/work
 GitPython @ file:///croot/gitpython_1720455034730/work
 greenlet @ file:///croot/greenlet_1702059959679/work
+gunicorn==23.0.0
 h11 @ file:///croot/h11_1706652277403/work
 h5py @ file:///croot/h5py_1715094721489/work
 HeapDict @ file:///Users/ktietz/demo/mc3/conda-bld/heapdict_1630598515714/work
